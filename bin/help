@@ -1,0 +1,14 @@
+#!/bin/bash
+# DESC: Display help for available commands in the pi-helper
+
+BIN_DIR="$HOME/.pi-helper/bin"
+
+echo "📖 Available commands:"
+echo
+
+for file in "$BIN_DIR"/*; do
+    [ -x "$file" ] || continue
+    cmd=$(basename "$file")
+    desc=$(grep -m1 '^# DESC:' "$file" | cut -d':' -f2- | sed 's/^ //')
+    printf "  %-15s %s\n" "$cmd" "$desc"
+done

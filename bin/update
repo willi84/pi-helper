@@ -1,4 +1,5 @@
 #!/bin/bash
+# DESC: Pull the latest version from the GitHub repository
 cd "$HOME/.pi-helper"
 echo "🔄 Manuelles Update:"
 git pull

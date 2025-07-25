@@ -1,4 +1,6 @@
 #!/bin/bash
+# DESC: Smart pip installer using venv fallback
+
 set -e
 
 if [ "$#" -lt 1 ]; then
