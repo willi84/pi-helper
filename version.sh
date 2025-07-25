@@ -1,2 +1,1 @@
-#!/bin/bash
-echo "0.9.1"
+echo 0.9.2
