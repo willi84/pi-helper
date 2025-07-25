@@ -33,3 +33,11 @@ sample usage:
 pi install flask picamera
 pi update
 ```
+
+---
+
+## 🧹 Uninstall
+
+```bash
+~/.local/share/pi/uninstall.sh
+```
