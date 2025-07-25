@@ -1,0 +1,4 @@
+#!/bin/bash
+cd "$HOME/.pi-helper"
+echo "🔄 Manuelles Update:"
+git pull

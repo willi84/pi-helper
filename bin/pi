@@ -1,0 +1,31 @@
+#!/bin/bash
+
+INSTALL_DIR="$HOME/.pi-helper"
+BIN_DIR="$INSTALL_DIR/bin"
+
+# Info-Update-Funktion (nur Hinweis)
+check_for_updates() {
+    if [ ! -d "$INSTALL_DIR/.git" ]; then return; fi
+    if ! ping -c1 -W1 github.com >/dev/null 2>&1; then return; fi
+    cd "$INSTALL_DIR"
+    if git diff --quiet; then
+        echo "🔄 Hinweis: Updates verfügbar → führe 'pi update' aus, um zu aktualisieren."
+    fi
+}
+
+# Update-Hinweis ausgeben
+check_for_updates
+
+CMD="$1"
+shift
+
+SCRIPT="$BIN_DIR/$CMD"
+
+if [ -x "$SCRIPT" ]; then
+    "$SCRIPT" "$@"
+else
+    echo "❌ Unbekannter Befehl: $CMD"
+    echo "Verfügbare Befehle:"
+    ls "$BIN_DIR" | grep -v pi
+    exit 1
+fi
