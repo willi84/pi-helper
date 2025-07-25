@@ -1,19 +1,19 @@
 #!/bin/bash
 
-INSTALL_DIR="$HOME/.pi-helper"
+INSTALL_DIR="$HOME/.local/share/pi"
 BIN_DIR="$INSTALL_DIR/bin"
 
-# Info-Update-Funktion (nur Hinweis)
+# Help text on update possibility
 check_for_updates() {
-    if [ ! -d "$INSTALL_DIR/.git" ]; then return; fi
+    SRC_DIR="$HOME/.pi-helper-src"
+    if [ ! -d "$SRC_DIR/.git" ]; then return; fi
     if ! ping -c1 -W1 github.com >/dev/null 2>&1; then return; fi
-    cd "$INSTALL_DIR"
+    cd "$SRC_DIR"
     if git diff --quiet; then
-        echo "🔄 Hinweis: Updates verfügbar → führe 'pi update' aus, um zu aktualisieren."
+        echo "🔄 Update available: run 'pi update' to fetch latest changes."
     fi
 }
 
-# Update-Hinweis ausgeben
 check_for_updates
 
 CMD="$1"
@@ -24,8 +24,13 @@ SCRIPT="$BIN_DIR/$CMD"
 if [ -x "$SCRIPT" ]; then
     "$SCRIPT" "$@"
 else
-    echo "❌ Unbekannter Befehl: $CMD"
-    echo "Verfügbare Befehle:"
-    ls "$BIN_DIR" | grep -v pi
+    echo "❌ Unknown command: $CMD"
+    echo "Available commands:"
+    for file in "$BIN_DIR"/*; do
+        [ -x "$file" ] || continue
+        name=$(basename "$file")
+        desc=$(grep -m1 '^# DESC:' "$file" | cut -d':' -f2- | sed 's/^ //')
+        printf "  %-15s %s\n" "$name" "$desc"
+    done
     exit 1
 fi

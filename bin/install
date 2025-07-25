@@ -4,20 +4,20 @@
 set -e
 
 if [ "$#" -lt 1 ]; then
-    echo "❌ Bitte mindestens ein Paket angeben."
+    echo "❌ Please provide at least one package to install."
     exit 1
 fi
 
-VENV="$HOME/.pi-helper/venv"
+VENV="$HOME/.local/share/pi/venv"
 TEST=$(python3 -m pip install --dry-run "$1" 2>&1 || true)
 
 if echo "$TEST" | grep -q "externally-managed-environment"; then
-    echo "📦 Nutze virtuelle Umgebung ($VENV)..."
+    echo "📦 Using virtual environment at $VENV..."
     if [ ! -d "$VENV" ]; then
         python3 -m venv "$VENV"
     fi
     "$VENV/bin/pip" install "$@"
 else
-    echo "📦 Systeminstallation via sudo pip..."
+    echo "📦 Installing system-wide via sudo pip..."
     sudo pip install "$@"
 fi

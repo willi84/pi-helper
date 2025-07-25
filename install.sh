@@ -2,20 +2,24 @@
 set -e
 
 REPO="${REPO:-willi84/pi-helper}"
-INSTALL_DIR="$HOME/.pi-helper"
+SRC_DIR="$HOME/.pi-helper-src"
+INSTALL_DIR="$HOME/.local/share/pi"
 BIN_DIR="$INSTALL_DIR/bin"
-LINK_NAME="pi"
-LINK_TARGET="/usr/local/bin/$LINK_NAME"
+LINK_PATH="/usr/local/bin/pi"
 
-echo "📥 Klone $REPO nach $INSTALL_DIR..."
-rm -rf "$INSTALL_DIR"
-git clone --depth=1 "https://github.com/$REPO.git" "$INSTALL_DIR"
+echo "📥 Cloning $REPO into $SRC_DIR..."
+rm -rf "$SRC_DIR"
+git clone --depth=1 "https://github.com/$REPO.git" "$SRC_DIR"
 
-echo "🔧 Setze Ausführrechte..."
-chmod +x "$BIN_DIR"/*
+echo "🔧 Copying scripts to $BIN_DIR..."
+mkdir -p "$BIN_DIR"
+cp "$SRC_DIR/bin/"* "$BIN_DIR/"
 
-echo "🔗 Erstelle Symlink $LINK_TARGET → $BIN_DIR/$LINK_NAME..."
-sudo ln -sf "$BIN_DIR/$LINK_NAME" "$LINK_TARGET"
+echo "📜 Setting executable bits..."
+chmod +x "$BIN_DIR/"*
 
-echo "✅ Installation abgeschlossen. Beispiel:"
-echo "   $LINK_NAME install flask"
+echo "🔗 Linking to $LINK_PATH..."
+sudo ln -sf "$BIN_DIR/pi" "$LINK_PATH"
+
+echo "✅ Installed successfully. Try:"
+echo "   pi help"

@@ -1,5 +1,15 @@
 #!/bin/bash
 # DESC: Pull the latest version from the GitHub repository
-cd "$HOME/.pi-helper"
-echo "🔄 Manuelles Update:"
+
+SRC_DIR="$HOME/.pi-helper-src"
+INSTALL_DIR="$HOME/.local/share/pi"
+
+echo "🔄 Pulling latest changes from repo..."
+cd "$SRC_DIR"
 git pull
+
+echo "📦 Updating installed files..."
+cp "$SRC_DIR/bin/"* "$INSTALL_DIR/bin/"
+chmod +x "$INSTALL_DIR/bin/"*
+
+echo "✅ Update complete."
