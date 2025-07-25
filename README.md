@@ -41,3 +41,10 @@ pi update
 ```bash
 ~/.local/share/pi/uninstall.sh
 ```
+
+---
+
+## 📝 Changelog
+```
+./release.sh patch
+```

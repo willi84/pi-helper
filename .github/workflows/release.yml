@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔢 Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+
+      - name: 📦 Create ZIP archive
+        run: |
+          mkdir dist
+          zip -r "dist/pi-helper-${{ steps.version.outputs.VERSION }}.zip" . -x "*.git*" "*.github*" "dist/*"
+
+      - name: 📝 Get changelog for this release
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          awk "/^## v$VERSION /{flag=1;next}/^## v/{flag=0}flag" CHANGELOG.md > .changes.md
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat .changes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: 🚀 Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          files: dist/pi-helper-${{ steps.version.outputs.VERSION }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
