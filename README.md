@@ -24,6 +24,11 @@ REPO="youruser/yourrepo" bash <(curl -sL https://raw.githubusercontent.com/youru
 
 ## 🚀 Usage
 
+* get help: `pi help`
+* install packages: `pi install <package1> <package2> ...`
+* update pi-helper: `pi update`
+
+sample usage:
 ```bash
 pi install flask picamera
 pi update
