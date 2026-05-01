@@ -2,7 +2,7 @@
 
 is_valid_repo() {
   local repo="$1"
-  printf '%s\n' "$repo" | grep -Eq '^[^/[:space:]]+/[^/[:space:]]+$'
+  printf '%s' "$repo" | grep -Eq '^[^/[:space:]]+/[^/[:space:]]+$'
 }
 
 read_plugin_config() {

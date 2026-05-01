@@ -9,10 +9,22 @@ CONFIG_FILE="$SCRIPT_DIR/../config/plugins.json"
 
 source "$LIB_DIR/index.sh"
 
+show_plugin_templates() {
+    display_headline "🔌 Plugin templates" >&2
+}
+
 prompt_for_plugin_repo() {
     local options=()
     local repos=()
     local line
+    local name
+    local rest
+    local repo
+    local desc
+    local selected_index
+    local manual_repo
+    local option
+    local i
 
     while IFS= read -r line; do
         name="${line%%|*}"
@@ -25,17 +37,40 @@ prompt_for_plugin_repo() {
 
     options+=("Manual repository")
 
-    display_headline "🔌 Plugin templates"
-    select option in "${options[@]}"; do
+    while true; do
+        show_plugin_templates
+        for i in "${!options[@]}"; do
+            printf '%s) %s\n' "$((i + 1))" "${options[$i]}" >&2
+        done
+        printf '#? ' >&2
+        read -r option
+
         [ -n "$option" ] || {
-            echo "❌ Invalid selection"
+            echo "❌ Invalid selection" >&2
             continue
         }
 
-        selected_index=$((REPLY - 1))
+        case "$option" in
+            ''|*[!0-9]*)
+                echo "❌ Invalid selection" >&2
+                continue
+                ;;
+        esac
+
+        selected_index=$((option - 1))
+        [ "$selected_index" -ge 0 ] || {
+            echo "❌ Invalid selection" >&2
+            continue
+        }
+
         if [ "$selected_index" -lt "${#repos[@]}" ]; then
             printf '%s\n' "${repos[$selected_index]}"
             return 0
+        fi
+
+        if [ "$selected_index" -ne "${#repos[@]}" ]; then
+            echo "❌ Invalid selection" >&2
+            continue
         fi
 
         read -r -p "Repository (org/repo): " manual_repo
@@ -71,10 +106,21 @@ install_plugin() {
     echo "✅ Plugin installed: $repo"
 }
 
-repo="${1:-}"
+main() {
+    local repo="${1:-}"
 
-if [ -z "$repo" ]; then
-    repo="$(prompt_for_plugin_repo)"
+    if [ -z "$repo" ]; then
+        repo="$(prompt_for_plugin_repo)"
+    fi
+
+    is_valid_repo "$repo" || {
+        echo "❌ Invalid repository format: $repo" >&2
+        exit 1
+    }
+
+    install_plugin "$repo"
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main "$@"
 fi
-
-install_plugin "$repo"

@@ -78,6 +78,31 @@ EOF
   [ "$output" = "willi84/test-pi" ]
 }
 
+@test "🧪 prompt_for_plugin_repo returns only repo value" {
+  cat <<'EOF' > "$src_config_dir/plugins.json"
+{
+  "plugins": [
+    {
+      "name": "Kiosk setup",
+      "repo": "willi84/kiosk-pi",
+      "description": "Kiosk setup"
+    },
+    {
+      "name": "Test setup",
+      "repo": "willi84/test-pi",
+      "description": "Test setup"
+    }
+  ]
+}
+EOF
+
+  dialog_stderr="$home_dir/dialog.stderr"
+  run bash -c "source '$src_bin_dir/plugin'; CONFIG_FILE='$src_config_dir/plugins.json'; printf '2\n' | prompt_for_plugin_repo 2>'$dialog_stderr'"
+
+  [ "$status" -eq 0 ]
+  [ "$output" = "willi84/test-pi" ]
+}
+
 @test "🧪 plugin installs repo from manual dialog input" {
   cat <<'EOF' > "$src_config_dir/plugins.json"
 {
