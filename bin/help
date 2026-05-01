@@ -2,7 +2,13 @@
 # DESC: Show list of available commands and descriptions
 
 # ✍🏻 set Library path
-LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+if [ ! -f "$LIB_DIR/index.sh" ]; then
+    echo "❌ Missing library entrypoint: $LIB_DIR/index.sh" >&2
+    exit 1
+fi
 
 # 📦 include library endpoint
 source "$LIB_DIR/index.sh"
@@ -20,4 +26,3 @@ for file in "$BIN_DIR"/*; do
 
     display_key_value "$cmd" "$desc"    # 💅display as key value
 done
-

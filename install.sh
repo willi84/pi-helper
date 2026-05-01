@@ -5,6 +5,7 @@ REPO="${REPO:-willi84/pi-helper}"
 SRC_DIR="$HOME/.pi-helper-src"
 INSTALL_DIR="$HOME/.local/share/pi"
 BIN_DIR="$INSTALL_DIR/bin"
+LIB_DIR="$INSTALL_DIR/lib"
 LINK_PATH="/usr/local/bin/pi"
 
 echo "📥 Cloning $REPO into $SRC_DIR..."
@@ -14,6 +15,10 @@ git clone --depth=1 "https://github.com/$REPO.git" "$SRC_DIR"
 echo "🔧 Copying scripts to $BIN_DIR..."
 mkdir -p "$BIN_DIR"
 cp "$SRC_DIR/bin/"* "$BIN_DIR/"
+
+echo "📚 Copying libraries to $LIB_DIR..."
+mkdir -p "$LIB_DIR"
+cp "$SRC_DIR/lib/"* "$LIB_DIR/"
 
 echo "📜 Setting executable bits..."
 chmod +x "$BIN_DIR/"*
