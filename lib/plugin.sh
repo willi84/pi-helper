@@ -179,13 +179,16 @@ list_plugin_env_entries() {
 
   env_file="$(get_plugin_env_file "$repo")"
 
-  python3 - "$install_script" "$env_file" <<'EOF'
+  python3 - "$install_script" "$env_file" "$(dirname "$install_script")" <<'EOF'
 import re
 import sys
+from pathlib import Path
 
 install_script = sys.argv[1]
 env_file = sys.argv[2]
+plugin_dir = Path(sys.argv[3])
 pattern = re.compile(r'\$\{([A-Z][A-Z0-9_]*)(?:(?::-|:=|-|=)(.*?))?\}')
+assignment_pattern = re.compile(r'^([A-Z][A-Z0-9_]*)=(.*)$')
 entries = []
 seen = set()
 
@@ -201,6 +204,30 @@ with open(install_script, "r", encoding="utf-8") as handle:
 
 for key, default in pattern.findall(content):
     emit(key, default)
+
+env_candidates = sorted({
+    path for path in plugin_dir.iterdir()
+    if path.is_file() and (
+        path.suffix == ".env"
+        or path.name.endswith(".env")
+        or ("config" in path.name and path.suffix in {"", ".env"})
+    )
+})
+
+for candidate in env_candidates:
+    try:
+        with open(candidate, "r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                match = assignment_pattern.match(line)
+                if not match:
+                    continue
+                key, default = match.groups()
+                emit(key, default.strip().strip('"').strip("'"))
+    except FileNotFoundError:
+        pass
 
 try:
     with open(env_file, "r", encoding="utf-8") as handle:

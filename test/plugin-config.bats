@@ -89,3 +89,40 @@ EOF
   [[ "$output" == *"APP_PORT=9090"* ]]
   [[ "$output" == *"APP_HOST=old-host"* ]]
 }
+
+@test "🧪 plugin-config reads variables from plugin config env file" {
+  cat <<'EOF' > "$plugin_config_dir/installed-plugins"
+willi84/kiosk-pi
+EOF
+  cat <<'EOF' > "$fake_bin_dir/git"
+#!/bin/bash
+target_dir="${@: -1}"
+mkdir -p "$target_dir"
+cat <<'EOS' > "$target_dir/install.sh"
+#!/bin/bash
+echo "loading kiosk-config.env"
+EOS
+cat <<'EOS' > "$target_dir/kiosk-config.env"
+KIOSK_HOSTNAME="<HOSTNAME>"
+KIOSK_URL="https://bahn.dev/"
+WIFI_SSID="<SSID>"
+WIFI_PASSWORD="<PASSWORD>"
+WIFI_HIDDEN="false"
+EOS
+chmod +x "$target_dir/install.sh"
+exit 0
+EOF
+  chmod +x "$fake_bin_dir/git"
+
+  run bash -c "printf '1\ninfo-screen\n\nOfficeWiFi\nsecret123\ntrue\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-config'"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Plugin config saved: willi84/kiosk-pi"* ]]
+  run cat "$plugin_state_dir/willi84_kiosk-pi.env"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"KIOSK_HOSTNAME=info-screen"* ]]
+  [[ "$output" == *"KIOSK_URL=https://bahn.dev/"* ]]
+  [[ "$output" == *"WIFI_SSID=OfficeWiFi"* ]]
+  [[ "$output" == *"WIFI_PASSWORD=secret123"* ]]
+  [[ "$output" == *"WIFI_HIDDEN=true"* ]]
+}
