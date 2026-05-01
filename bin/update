@@ -20,7 +20,8 @@ for file in "$SRC_DIR/bin/"*; do
 done
 
 cp "$SRC_DIR/lib/"* "$LIB_DIR/"
-cp "$SRC_DIR/bin/update" "$BIN_DIR/update"
+cp "$SRC_DIR/bin/update" "$BIN_DIR/update.tmp"
+mv "$BIN_DIR/update.tmp" "$BIN_DIR/update"
 chmod +x "$BIN_DIR/"*
 
 echo "✅ Update complete."
