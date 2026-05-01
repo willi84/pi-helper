@@ -325,6 +325,23 @@ for path in plugin_dir.rglob('*'):
 EOF
 }
 
+show_detected_plugin_services() {
+  local plugin_dir="$1"
+  local service_count=0
+  local service
+
+  while IFS= read -r service; do
+    [ -n "$service" ] || continue
+    if [ "$service_count" -eq 0 ]; then
+      echo "🔎 Detected plugin services:"
+    fi
+    echo "   $service"
+    service_count=$((service_count + 1))
+  done < <(list_plugin_service_names "$plugin_dir")
+
+  [ "$service_count" -gt 0 ] || echo "ℹ️ No plugin services detected"
+}
+
 restart_plugin_services_if_running() {
   local plugin_dir="$1"
   local service
@@ -334,8 +351,10 @@ restart_plugin_services_if_running() {
 
   while IFS= read -r service; do
     [ -n "$service" ] || continue
+    echo "🔎 Checking service: $service"
 
     if sudo -n systemctl is-active --quiet "$service" 2>/dev/null; then
+      echo "🔄 Restarting service: $service"
       sudo -n systemctl restart "$service" >/dev/null 2>&1 || true
       echo "🔄 Restarted service: $service"
       restarted=1
@@ -343,10 +362,14 @@ restart_plugin_services_if_running() {
     fi
 
     if systemctl --user is-active --quiet "$service" 2>/dev/null; then
+      echo "🔄 Restarting user service: $service"
       systemctl --user restart "$service" >/dev/null 2>&1 || true
       echo "🔄 Restarted user service: $service"
       restarted=1
+      continue
     fi
+
+    echo "ℹ️ Service not active: $service"
   done < <(list_plugin_service_names "$plugin_dir")
 
   [ "$restarted" -eq 1 ] || echo "ℹ️ No running plugin service found for restart"
@@ -549,6 +572,9 @@ configure_plugin() {
   env_file="$(get_plugin_env_file "$repo")"
 
   if [ "${PLUGIN_ENV_CHANGED:-0}" -eq 1 ]; then
+    echo "🚀 Re-running install.sh for config changes..."
+    run_plugin_installer "$tmp_dir" "$repo"
+    show_detected_plugin_services "$tmp_dir"
     restart_plugin_services_if_running "$tmp_dir"
   fi
 

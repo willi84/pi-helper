@@ -6,6 +6,7 @@ setup() {
   src_bin_dir="$repo_root/bin"
   src_lib_dir="$repo_root/lib"
   fake_bin_dir="$home_dir/fake-bin"
+  install_log="$home_dir/install.log"
   plugin_config_dir="$home_dir/.local/share/pi/config/plugins"
   plugin_state_dir="$home_dir/.local/share/pi/state/plugins"
   systemctl_log="$home_dir/systemctl.log"
@@ -73,6 +74,7 @@ EOF
 
   chmod +x "$src_bin_dir/plugin-config" "$fake_bin_dir/git"
   chmod +x "$fake_bin_dir/sudo" "$fake_bin_dir/systemctl"
+  : > "$install_log"
   : > "$systemctl_log"
   : > "$active_services_file"
 }
@@ -186,6 +188,9 @@ mkdir -p "$target_dir"
 cat <<'EOS' > "$target_dir/install.sh"
 #!/bin/bash
 echo "loading kiosk-config.env"
+cat <<EOT > "$HOME/install.log"
+KIOSK_URL=${KIOSK_URL:-missing}
+EOT
 EOS
 cat <<'EOS' > "$target_dir/setup-kiosk.sh"
 #!/bin/bash
@@ -206,7 +211,13 @@ EOF
   run bash -c "printf '1\nhttps://example.org/\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' SYSTEMCTL_LOG='$systemctl_log' ACTIVE_SERVICES_FILE='$active_services_file' bash '$src_bin_dir/plugin-config'"
 
   [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-running install.sh for config changes..."* ]]
+  [[ "$output" == *"Detected plugin services:"* ]]
+  [[ "$output" == *"Checking service: kiosk-display.service"* ]]
   [[ "$output" == *"Restarted service: kiosk-display.service"* ]]
+  [[ "$output" == *"KIOSK_URL=https://example.org/"* ]]
+  run cat "$install_log"
+  [ "$status" -eq 0 ]
   [[ "$output" == *"KIOSK_URL=https://example.org/"* ]]
   run cat "$systemctl_log"
   [ "$status" -eq 0 ]
