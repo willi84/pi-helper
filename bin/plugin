@@ -100,6 +100,7 @@ install_plugin() {
 
     echo "🚀 Running install.sh..."
     run_plugin_installer "$tmp_dir" "$repo"
+    save_last_plugin_repo "$repo"
 
     trap - EXIT
     rm -rf "$tmp_dir"

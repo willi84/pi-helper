@@ -10,12 +10,22 @@
 
 ## 🧪 Installation
 
-* install basic cli tool:
+1. ***Pi-OS:*** 🛠️ 
+- Use a frehs Pi-OS instance or setup a fresh instance of Raspberry Pi OS on your Raspberry Pi.
+- Follow the instructions in the [Raspberry Pi OS setup guide](docs/setup-pi-os.md) if you need help with setting up Raspberry Pi OS on your device.
+
+2. ***🌐 Connection:*** 
+- Connect to your Raspberry Pi e.g. via ssh `ssh <USER>@<IP_ADDRESS>` 
+- Sample: if your user is `pi` and the IP address of your Raspberry Pi is `192.168.1.100`, you would run: `ssh pi@192.168.1.100`
+
+3. ***💻 Setup Pi-Helper:***
+- Install basic pi-helper CLI
 ```bash
 curl -sL https://raw.githubusercontent.com/willi84/pi-helper/main/install.sh | bash
 ```
-### Plugins
-* install a plugin by its name
+
+4. ***🔌 Use a Plugin:***
+- install a plugin by its name
 ```bash
 pi plugin willi84/kiosk-pi
 ```
