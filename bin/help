@@ -1,14 +1,23 @@
 #!/bin/bash
 # DESC: Show list of available commands and descriptions
 
+# ✍🏻 set Library path
+LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd -P)"
+
+# 📦 include library endpoint
+source "$LIB_DIR/index.sh"
+
+
 BIN_DIR="$HOME/.local/share/pi/bin"
 
-echo "📖 Available commands:"
-echo
+display_headline "📖 Available commands"
 
 for file in "$BIN_DIR"/*; do
-    [ -x "$file" ] || continue
-    cmd=$(basename "$file")
-    desc=$(grep -m1 '^# DESC:' "$file" | cut -d':' -f2- | sed 's/^ //')
-    printf "  %-15s %s\n" "$cmd" "$desc"
+    is_executable "$file" || continue   # 🧪 check if command file exists
+
+    cmd=$(basename "$file")             # ✍🏻 set cmd name
+    desc=$(get_description "$file")     # ✍🏻 set description
+
+    display_key_value "$cmd" "$desc"    # 💅display as key value
 done
+
