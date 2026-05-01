@@ -5,13 +5,14 @@ SRC_DIR="$HOME/.pi-helper-src"
 INSTALL_DIR="$HOME/.local/share/pi"
 BIN_DIR="$INSTALL_DIR/bin"
 LIB_DIR="$INSTALL_DIR/lib"
+CONFIG_DIR="$INSTALL_DIR/config"
 
 echo "🔄 Pulling latest changes from repo..."
 cd "$SRC_DIR"
 git pull
 
 echo "📦 Updating installed files..."
-mkdir -p "$BIN_DIR" "$LIB_DIR"
+mkdir -p "$BIN_DIR" "$LIB_DIR" "$CONFIG_DIR"
 
 for file in "$SRC_DIR/bin/"*; do
     name=$(basename "$file")
@@ -20,6 +21,7 @@ for file in "$SRC_DIR/bin/"*; do
 done
 
 cp "$SRC_DIR/lib/"* "$LIB_DIR/"
+cp "$SRC_DIR/config/"* "$CONFIG_DIR/"
 cp "$SRC_DIR/bin/update" "$BIN_DIR/update.tmp"
 mv "$BIN_DIR/update.tmp" "$BIN_DIR/update"
 chmod +x "$BIN_DIR/"*

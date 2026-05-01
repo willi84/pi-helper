@@ -1,0 +1,14 @@
+{
+  "plugins": [
+    {
+      "name": "Kiosk setup",
+      "repo": "willi84/kiosk-pi",
+      "description": "🖥️ Kiosk setup"
+    },
+    {
+      "name": "Test setup",
+      "repo": "willi84/test-pi",
+      "description": "🧪 Test setup"
+    }
+  ]
+}

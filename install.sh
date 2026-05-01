@@ -6,6 +6,7 @@ SRC_DIR="$HOME/.pi-helper-src"
 INSTALL_DIR="$HOME/.local/share/pi"
 BIN_DIR="$INSTALL_DIR/bin"
 LIB_DIR="$INSTALL_DIR/lib"
+CONFIG_DIR="$INSTALL_DIR/config"
 LINK_PATH="/usr/local/bin/pi"
 
 echo "📥 Cloning $REPO into $SRC_DIR..."
@@ -19,6 +20,10 @@ cp "$SRC_DIR/bin/"* "$BIN_DIR/"
 echo "📚 Copying libraries to $LIB_DIR..."
 mkdir -p "$LIB_DIR"
 cp "$SRC_DIR/lib/"* "$LIB_DIR/"
+
+echo "🧾 Copying config to $CONFIG_DIR..."
+mkdir -p "$CONFIG_DIR"
+cp "$SRC_DIR/config/"* "$CONFIG_DIR/"
 
 echo "📜 Setting executable bits..."
 chmod +x "$BIN_DIR/"*

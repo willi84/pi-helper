@@ -1,0 +1,80 @@
+#!/bin/bash
+# DESC: Install a plugin from a repo or template
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+CONFIG_FILE="$SCRIPT_DIR/../config/plugins.json"
+
+source "$LIB_DIR/index.sh"
+
+prompt_for_plugin_repo() {
+    local options=()
+    local repos=()
+    local line
+
+    while IFS= read -r line; do
+        name="${line%%|*}"
+        rest="${line#*|}"
+        repo="${rest%%|*}"
+        desc="${rest#*|}"
+        options+=("$name - $desc")
+        repos+=("$repo")
+    done < <(read_plugin_config "$CONFIG_FILE")
+
+    options+=("Manual repository")
+
+    display_headline "🔌 Plugin templates"
+    select option in "${options[@]}"; do
+        [ -n "$option" ] || {
+            echo "❌ Invalid selection"
+            continue
+        }
+
+        selected_index=$((REPLY - 1))
+        if [ "$selected_index" -lt "${#repos[@]}" ]; then
+            printf '%s\n' "${repos[$selected_index]}"
+            return 0
+        fi
+
+        read -r -p "Repository (org/repo): " manual_repo
+        is_valid_repo "$manual_repo" || {
+            echo "❌ Invalid repository format: $manual_repo" >&2
+            return 1
+        }
+        printf '%s\n' "$manual_repo"
+        return 0
+    done
+}
+
+install_plugin() {
+    local repo="$1"
+    local tmp_dir
+
+    is_valid_repo "$repo" || {
+        echo "❌ Invalid repository format: $repo" >&2
+        return 1
+    }
+
+    tmp_dir="$(mktemp -d /tmp/pi-plugin.XXXXXX)"
+    trap 'rm -rf "$tmp_dir"' EXIT
+
+    echo "📥 Cloning plugin $repo..."
+    clone_plugin_repo "$repo" "$tmp_dir"
+
+    echo "🚀 Running install.sh..."
+    run_plugin_installer "$tmp_dir" "$repo"
+
+    trap - EXIT
+    rm -rf "$tmp_dir"
+    echo "✅ Plugin installed: $repo"
+}
+
+repo="${1:-}"
+
+if [ -z "$repo" ]; then
+    repo="$(prompt_for_plugin_repo)"
+fi
+
+install_plugin "$repo"
