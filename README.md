@@ -44,6 +44,16 @@ pi update
 
 ---
 
+## 🧪 Test
+after changing the code of libe, run tests to make sure the basics are working:
+```bash
+bats test/
+```
+Probably you need to install `bats` first:
+```bash
+sudo apt install bats
+```
+
 ## 📝 Changelog
 ```
 ./release.sh patch
