@@ -87,3 +87,19 @@ EOF
   [[ "$output" == *"APP_PORT=8080"* ]]
   [[ "$output" == *"APP_HOST=example.local"* ]]
 }
+
+@test "🧪 plugin-update shows active plugin parameters after update" {
+  printf 'willi84/test-pi\n' > "$plugin_config_dir/installed-plugins"
+  cat <<'EOF' > "$plugin_state_dir/willi84_test-pi.env"
+APP_PORT=9090
+APP_HOST=example.local
+EOF
+
+  run bash -c "printf '1\n\n\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Plugin updated: willi84/test-pi"* ]]
+  [[ "$output" == *"Active plugin parameters:"* ]]
+  [[ "$output" == *"APP_PORT=9090"* ]]
+  [[ "$output" == *"APP_HOST=example.local"* ]]
+}

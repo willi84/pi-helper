@@ -163,6 +163,8 @@ EOF
   [ "$status" -eq 0 ]
   [[ "$output" == *"Plugin config saved: willi84/kiosk-pi"* ]]
   [[ "$output" == *"Config path: $plugin_state_dir/willi84_kiosk-pi.env"* ]]
+  [[ "$output" == *"Active plugin parameters:"* ]]
+  [[ "$output" == *"KIOSK_URL=https://bahn.dev/"* ]]
   run cat "$plugin_state_dir/willi84_kiosk-pi.env"
   [ "$status" -eq 0 ]
   [[ "$output" == *"KIOSK_HOSTNAME=info-screen"* ]]
@@ -205,7 +207,42 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Restarted service: kiosk-display.service"* ]]
+  [[ "$output" == *"KIOSK_URL=https://example.org/"* ]]
   run cat "$systemctl_log"
   [ "$status" -eq 0 ]
   [[ "$output" == *"restart kiosk-display.service"* ]]
+}
+
+@test "🧪 plugin-config reads inline env assignments with URL defaults" {
+  cat <<'EOF' > "$plugin_config_dir/installed-plugins"
+willi84/kiosk-pi
+EOF
+  cat <<'EOF' > "$fake_bin_dir/git"
+#!/bin/bash
+target_dir="${@: -1}"
+mkdir -p "$target_dir"
+cat <<'EOS' > "$target_dir/install.sh"
+#!/bin/bash
+echo "loading kiosk-config.env"
+EOS
+cat <<'EOS' > "$target_dir/kiosk-config.env"
+KIOSK_HOSTNAME="<HOSTNAME>" KIOSK_URL="https://bahn.dev/" WIFI_SSID="<SSID>" WIFI_PASSWORD="<PASSWORD>" WIFI_HIDDEN="false"
+EOS
+chmod +x "$target_dir/install.sh"
+exit 0
+EOF
+  chmod +x "$fake_bin_dir/git"
+
+  run bash -c "printf '1\ninfo-screen\nhttps://example.org/screen\nOfficeWiFi\nsecret123\ntrue\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' SYSTEMCTL_LOG='$systemctl_log' ACTIVE_SERVICES_FILE='$active_services_file' bash '$src_bin_dir/plugin-config'"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Plugin config saved: willi84/kiosk-pi"* ]]
+  [[ "$output" == *"KIOSK_URL=https://example.org/screen"* ]]
+  run cat "$plugin_state_dir/willi84_kiosk-pi.env"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"KIOSK_HOSTNAME=info-screen"* ]]
+  [[ "$output" == *"KIOSK_URL=https://example.org/screen"* ]]
+  [[ "$output" == *"WIFI_SSID=OfficeWiFi"* ]]
+  [[ "$output" == *"WIFI_PASSWORD=secret123"* ]]
+  [[ "$output" == *"WIFI_HIDDEN=true"* ]]
 }

@@ -197,7 +197,7 @@ install_script = sys.argv[1]
 env_file = sys.argv[2]
 plugin_dir = Path(sys.argv[3])
 pattern = re.compile(r'\$\{([A-Z][A-Z0-9_]*)(?:(?::-|:=|-|=)(.*?))?\}')
-assignment_pattern = re.compile(r'^([A-Z][A-Z0-9_]*)=(.*)$')
+assignment_pattern = re.compile(r'([A-Z][A-Z0-9_]*)=("([^"]*)"|'"'"'([^'"'"']*)'"'"'|[^ \t]+)')
 entries = []
 seen = set()
 
@@ -230,11 +230,10 @@ for candidate in env_candidates:
                 line = raw_line.strip()
                 if not line or line.startswith("#"):
                     continue
-                match = assignment_pattern.match(line)
-                if not match:
-                    continue
-                key, default = match.groups()
-                emit(key, default.strip().strip('"').strip("'"))
+                for match in assignment_pattern.finditer(line):
+                    key = match.group(1)
+                    default = match.group(2)
+                    emit(key, default.strip().strip('"').strip("'"))
     except FileNotFoundError:
         pass
 
@@ -363,6 +362,20 @@ apply_saved_plugin_env() {
   # shellcheck disable=SC1090
   source "$env_file"
   set +a
+}
+
+show_current_plugin_env() {
+  local repo="$1"
+  local env_file
+
+  env_file="$(get_plugin_env_file "$repo")"
+  [ -f "$env_file" ] || return 0
+
+  echo "📋 Active plugin parameters:"
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    echo "   $line"
+  done < "$env_file"
 }
 
 read_plugin_config() {
@@ -543,6 +556,7 @@ configure_plugin() {
   rm -rf "$tmp_dir"
   echo "✅ Plugin config saved: $repo"
   echo "📄 Config path: $env_file"
+  show_current_plugin_env "$repo"
 }
 
 update_plugin() {
@@ -581,4 +595,5 @@ update_plugin() {
   trap - EXIT
   rm -rf "$tmp_dir"
   echo "✅ Plugin updated: $repo"
+  show_current_plugin_env "$repo"
 }
