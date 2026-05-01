@@ -188,6 +188,9 @@ mkdir -p "$target_dir"
 cat <<'EOS' > "$target_dir/install.sh"
 #!/bin/bash
 echo "loading kiosk-config.env"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck disable=SC1090
+source "$SCRIPT_DIR/kiosk-config.env"
 cat <<EOT > "$HOME/install.log"
 KIOSK_URL=${KIOSK_URL:-missing}
 EOT
@@ -212,6 +215,7 @@ EOF
 
   [ "$status" -eq 0 ]
   [[ "$output" == *"Re-running install.sh for config changes..."* ]]
+  [[ "$output" == *"Synced plugin env file:"* ]]
   [[ "$output" == *"Detected plugin services:"* ]]
   [[ "$output" == *"Checking service: kiosk-display.service"* ]]
   [[ "$output" == *"Restarted service: kiosk-display.service"* ]]

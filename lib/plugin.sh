@@ -142,6 +142,95 @@ load_all_plugin_env_values() {
   cat "$env_file"
 }
 
+sync_saved_env_to_plugin_dir() {
+  local repo="$1"
+  local plugin_dir="$2"
+  local env_file
+  local candidate_count
+
+  env_file="$(get_plugin_env_file "$repo")"
+  [ -f "$env_file" ] || return 0
+
+  candidate_count="$(find "$plugin_dir" -maxdepth 1 -type f \( -name "*.env" -o -name "*config*.env" -o -name "*config*" \) | wc -l | tr -d ' ')"
+  [ "${candidate_count:-0}" -gt 0 ] || {
+    echo "ℹ️ No plugin env file found for sync"
+    return 0
+  }
+
+  python3 - "$plugin_dir" "$env_file" <<'EOF'
+import shlex
+import sys
+from pathlib import Path
+
+plugin_dir = Path(sys.argv[1])
+env_file = Path(sys.argv[2])
+
+values = {}
+for raw_line in env_file.read_text(encoding="utf-8").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, raw_value = line.split("=", 1)
+    values[key.strip()] = shlex.split(f"x={raw_value}", posix=True)[0].split("=", 1)[1]
+
+candidates = sorted({
+    path for path in plugin_dir.iterdir()
+    if path.is_file() and (
+        path.suffix == ".env"
+        or path.name.endswith(".env")
+        or ("config" in path.name and path.suffix in {"", ".env"})
+    )
+})
+
+for candidate in candidates:
+    lines = candidate.read_text(encoding="utf-8").splitlines()
+    updated = []
+    seen = set()
+
+    for raw_line in lines:
+      stripped = raw_line.strip()
+      if not stripped or stripped.startswith("#") or "=" not in stripped:
+        updated.append(raw_line)
+        continue
+
+      parts = []
+      changed = False
+      for token in raw_line.split():
+          if "=" not in token:
+              parts.append(token)
+              continue
+          key, _ = token.split("=", 1)
+          if key in values:
+              parts.append(f'{key}="{values[key]}"')
+              seen.add(key)
+              changed = True
+          else:
+              parts.append(token)
+
+      if changed:
+          updated.append(" ".join(parts))
+          continue
+
+      key, _ = stripped.split("=", 1)
+      key = key.strip()
+      if key in values:
+          updated.append(f'{key}="{values[key]}"')
+          seen.add(key)
+          continue
+
+      updated.append(raw_line)
+
+    for key, value in values.items():
+        if key not in seen and all(not line.lstrip().startswith(f"{key}=") for line in updated):
+            updated.append(f'{key}="{value}"')
+
+    candidate.write_text("\n".join(updated) + "\n", encoding="utf-8")
+    print(f"📝 Synced plugin env file: {candidate}")
+    for key, value in values.items():
+        print(f"   {key}={value}")
+EOF
+}
+
 load_plugin_env_value() {
   local repo="$1"
   local key="$2"
@@ -526,6 +615,7 @@ run_plugin_installer() {
   repo_git_url="$(build_github_repo_git_url "$repo")"
   repo_raw_base_url="$(build_github_raw_base_url "$repo")"
   apply_saved_plugin_env "$repo"
+  sync_saved_env_to_plugin_dir "$repo" "$plugin_dir"
 
   PLUGIN_REPO="$repo" \
   PLUGIN_REPO_SLUG="$repo" \
