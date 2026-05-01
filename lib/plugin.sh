@@ -27,6 +27,10 @@ get_last_plugin_file() {
   printf '%s/last-plugin' "$(get_plugin_config_dir)"
 }
 
+get_installed_plugins_file() {
+  printf '%s/installed-plugins' "$(get_plugin_config_dir)"
+}
+
 build_github_repo_path() {
   local repo="$1"
   printf 'github.com/%s' "$repo"
@@ -57,12 +61,58 @@ save_last_plugin_repo() {
   printf '%s\n' "$repo" > "$(get_last_plugin_file)"
 }
 
+save_installed_plugin_repo() {
+  local repo="$1"
+  local installed_plugins_file
+  local tmp_file
+
+  installed_plugins_file="$(get_installed_plugins_file)"
+  tmp_file="$(mktemp /tmp/pi-plugin-installed.XXXXXX)"
+  ensure_plugin_dirs
+  touch "$installed_plugins_file"
+  grep -Fxv "$repo" "$installed_plugins_file" > "$tmp_file" || true
+  printf '%s\n' "$repo" >> "$tmp_file"
+  mv "$tmp_file" "$installed_plugins_file"
+}
+
 load_last_plugin_repo() {
   local last_plugin_file
   last_plugin_file="$(get_last_plugin_file)"
 
   [ -f "$last_plugin_file" ] || return 1
   cat "$last_plugin_file"
+}
+
+load_installed_plugin_repos() {
+  local installed_plugins_file
+  local last_repo
+
+  installed_plugins_file="$(get_installed_plugins_file)"
+  last_repo="$(load_last_plugin_repo 2>/dev/null || true)"
+
+  python3 - "$installed_plugins_file" "$last_repo" <<'EOF'
+import sys
+
+installed_file = sys.argv[1]
+last_repo = sys.argv[2]
+seen = set()
+
+def emit(repo: str) -> None:
+    repo = repo.strip()
+    if not repo or repo in seen:
+        return
+    seen.add(repo)
+    print(repo)
+
+try:
+    with open(installed_file, "r", encoding="utf-8") as handle:
+        for line in handle:
+            emit(line)
+except FileNotFoundError:
+    pass
+
+emit(last_repo)
+EOF
 }
 
 save_plugin_env_value() {
@@ -191,6 +241,83 @@ for entry in data.get("plugins", []):
 EOF
 }
 
+show_installed_plugins() {
+  display_headline "🔌 Installed plugins" >&2
+}
+
+prompt_for_installed_plugin_repo() {
+  local options=()
+  local repos=()
+  local line
+  local selected_index
+  local manual_repo
+  local option
+  local i
+
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    repos+=("$line")
+    options+=("$line")
+  done < <(load_installed_plugin_repos)
+
+  if [ "${#repos[@]}" -eq 0 ]; then
+    read -r -p "Repository (org/repo): " manual_repo
+    is_valid_repo "$manual_repo" || {
+      echo "❌ Invalid repository format: $manual_repo" >&2
+      return 1
+    }
+    printf '%s\n' "$manual_repo"
+    return 0
+  fi
+
+  options+=("Manual repository")
+
+  while true; do
+    show_installed_plugins
+    for i in "${!options[@]}"; do
+      printf '%s) %s\n' "$((i + 1))" "${options[$i]}" >&2
+    done
+    printf '#? ' >&2
+    read -r option
+
+    [ -n "$option" ] || {
+      echo "❌ Invalid selection" >&2
+      continue
+    }
+
+    case "$option" in
+      ''|*[!0-9]*)
+        echo "❌ Invalid selection" >&2
+        continue
+        ;;
+    esac
+
+    selected_index=$((option - 1))
+    [ "$selected_index" -ge 0 ] || {
+      echo "❌ Invalid selection" >&2
+      continue
+    }
+
+    if [ "$selected_index" -lt "${#repos[@]}" ]; then
+      printf '%s\n' "${repos[$selected_index]}"
+      return 0
+    fi
+
+    if [ "$selected_index" -ne "${#repos[@]}" ]; then
+      echo "❌ Invalid selection" >&2
+      continue
+    fi
+
+    read -r -p "Repository (org/repo): " manual_repo
+    is_valid_repo "$manual_repo" || {
+      echo "❌ Invalid repository format: $manual_repo" >&2
+      return 1
+    }
+    printf '%s\n' "$manual_repo"
+    return 0
+  done
+}
+
 clone_plugin_repo() {
   local repo="$1"
   local target_dir="$2"
@@ -229,17 +356,48 @@ run_plugin_installer() {
   bash "$plugin_dir/install.sh"
 }
 
+configure_plugin() {
+  local repo="$1"
+  local tmp_dir
+  local install_script
+
+  if [ -z "$repo" ]; then
+    repo="$(prompt_for_installed_plugin_repo)"
+  fi
+
+  is_valid_repo "$repo" || {
+    echo "❌ Invalid repository format: $repo" >&2
+    return 1
+  }
+
+  tmp_dir="$(mktemp -d /tmp/pi-plugin-update.XXXXXX)"
+  trap 'rm -rf "$tmp_dir"' EXIT
+
+  echo "📥 Cloning plugin $repo..."
+  clone_plugin_repo "$repo" "$tmp_dir"
+  install_script="$tmp_dir/install.sh"
+
+  [ -f "$install_script" ] || {
+    echo "❌ install.sh not found for $repo" >&2
+    return 1
+  }
+
+  prompt_plugin_env_updates "$repo" "$install_script"
+  save_installed_plugin_repo "$repo"
+  save_last_plugin_repo "$repo"
+
+  trap - EXIT
+  rm -rf "$tmp_dir"
+  echo "✅ Plugin config saved: $repo"
+}
+
 update_plugin() {
   local repo="$1"
   local tmp_dir
   local install_script
-  local manual_repo
 
   if [ -z "$repo" ]; then
-    repo="$(load_last_plugin_repo)" || {
-      read -r -p "Repository (org/repo): " manual_repo
-      repo="$manual_repo"
-    }
+    repo="$(prompt_for_installed_plugin_repo)"
   fi
 
   is_valid_repo "$repo" || {
@@ -263,6 +421,7 @@ update_plugin() {
 
   echo "🚀 Running install.sh..."
   run_plugin_installer "$tmp_dir" "$repo"
+  save_installed_plugin_repo "$repo"
   save_last_plugin_repo "$repo"
 
   trap - EXIT

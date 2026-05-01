@@ -68,6 +68,9 @@ teardown() {
   [[ "$output" == *"REPO=user/project"* ]]
   [[ "$output" == *"REPO_PATH=github.com/user/project"* ]]
   [[ "$output" == *"REPO_URL=https://github.com/user/project"* ]]
+  run cat "$home_dir/.local/share/pi/config/plugins/installed-plugins"
+  [ "$status" -eq 0 ]
+  [ "$output" = "user/project" ]
 }
 
 @test "🧪 plugin installs repo from template dialog" {

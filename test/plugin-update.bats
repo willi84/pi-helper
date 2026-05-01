@@ -44,9 +44,9 @@ teardown() {
 }
 
 @test "🧪 plugin-update uses defaults when values are kept" {
-  printf 'willi84/test-pi\n' > "$plugin_config_dir/last-plugin"
+  printf 'willi84/test-pi\n' > "$plugin_config_dir/installed-plugins"
 
-  run bash -c "printf '\n\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
+  run bash -c "printf '1\n\n\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
 
   [ "$status" -eq 0 ]
   run cat "$install_log"
@@ -66,13 +66,16 @@ teardown() {
 }
 
 @test "🧪 plugin-update shows saved values and allows changing them" {
-  printf 'willi84/test-pi\n' > "$plugin_config_dir/last-plugin"
+  cat <<'EOF' > "$plugin_config_dir/installed-plugins"
+willi84/other-pi
+willi84/test-pi
+EOF
   cat <<'EOF' > "$plugin_state_dir/willi84_test-pi.env"
 APP_PORT=8080
 APP_HOST=old-host
 EOF
 
-  run bash -c "printf '\nexample.local\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
+  run bash -c "printf '2\n\nexample.local\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
 
   [ "$status" -eq 0 ]
   run cat "$install_log"

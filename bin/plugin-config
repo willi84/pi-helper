@@ -1,0 +1,18 @@
+#!/bin/bash
+# DESC: Update the saved config values of an installed plugin
+
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+LIB_DIR="$SCRIPT_DIR/../lib"
+
+source "$LIB_DIR/index.sh"
+
+main() {
+  local repo="${1:-}"
+  configure_plugin "$repo"
+}
+
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+  main "$@"
+fi
