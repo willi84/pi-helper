@@ -55,6 +55,16 @@ teardown() {
   [[ "$output" == *"APP_HOST=localhost"* ]]
 }
 
+@test "🧪 plugin-update asks for repo when no plugin is stored" {
+  run bash -c "printf 'willi84/test-pi\n\n\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-update'"
+
+  [ "$status" -eq 0 ]
+  run cat "$install_log"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"APP_PORT=3000"* ]]
+  [[ "$output" == *"APP_HOST=localhost"* ]]
+}
+
 @test "🧪 plugin-update shows saved values and allows changing them" {
   printf 'willi84/test-pi\n' > "$plugin_config_dir/last-plugin"
   cat <<'EOF' > "$plugin_state_dir/willi84_test-pi.env"

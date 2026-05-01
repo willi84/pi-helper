@@ -233,11 +233,12 @@ update_plugin() {
   local repo="$1"
   local tmp_dir
   local install_script
+  local manual_repo
 
   if [ -z "$repo" ]; then
     repo="$(load_last_plugin_repo)" || {
-      echo "❌ No plugin installed yet" >&2
-      return 1
+      read -r -p "Repository (org/repo): " manual_repo
+      repo="$manual_repo"
     }
   fi
 
