@@ -228,6 +228,66 @@ EOF
   [[ "$output" == *"restart kiosk-display.service"* ]]
 }
 
+@test "🧪 plugin-config reruns generated setup script with synced kiosk config" {
+  cat <<'EOF' > "$plugin_config_dir/installed-plugins"
+willi84/kiosk-pi
+EOF
+  printf 'kiosk-display.service\n' > "$active_services_file"
+  cat <<'EOF' > "$fake_bin_dir/curl"
+#!/bin/bash
+url="$2"
+target="$4"
+case "$url" in
+  */setup-kiosk.sh)
+    cat <<'EOS' > "$target"
+#!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+# shellcheck disable=SC1090
+source "$SCRIPT_DIR/kiosk-config.env"
+cat <<EOT > "$HOME/setup.log"
+KIOSK_URL=${KIOSK_URL:-missing}
+EOT
+EOS
+    ;;
+  */kiosk-config.env)
+    cat <<'EOS' > "$target"
+KIOSK_URL="https://bahn.dev/"
+EOS
+    ;;
+esac
+EOF
+  chmod +x "$fake_bin_dir/curl"
+  cat <<'EOF' > "$fake_bin_dir/git"
+#!/bin/bash
+target_dir="${@: -1}"
+mkdir -p "$target_dir"
+cat <<'EOS' > "$target_dir/install.sh"
+#!/bin/bash
+set -e
+REPO_BASE="https://raw.githubusercontent.com/willi84/kiosk-pi/main"
+curl -fsSL "$REPO_BASE/setup-kiosk.sh" -o setup-kiosk.sh
+curl -fsSL "$REPO_BASE/kiosk-config.env" -o kiosk-config.env
+chmod +x setup-kiosk.sh
+./setup-kiosk.sh
+EOS
+cat <<'EOS' > "$target_dir/kiosk-config.env"
+KIOSK_URL="https://bahn.dev/"
+EOS
+chmod +x "$target_dir/install.sh"
+exit 0
+EOF
+  chmod +x "$fake_bin_dir/git"
+
+  run bash -c "printf '1\nhttps://example.org/screen\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' SYSTEMCTL_LOG='$systemctl_log' ACTIVE_SERVICES_FILE='$active_services_file' bash '$src_bin_dir/plugin-config'"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Re-running generated setup script with saved config..."* ]]
+  [[ "$output" == *"KIOSK_URL=https://example.org/screen"* ]]
+  run cat "$home_dir/setup.log"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"KIOSK_URL=https://example.org/screen"* ]]
+}
+
 @test "🧪 plugin-config reads inline env assignments with URL defaults" {
   cat <<'EOF' > "$plugin_config_dir/installed-plugins"
 willi84/kiosk-pi

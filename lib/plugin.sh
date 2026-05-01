@@ -617,16 +617,32 @@ run_plugin_installer() {
   apply_saved_plugin_env "$repo"
   sync_saved_env_to_plugin_dir "$repo" "$plugin_dir"
 
-  PLUGIN_REPO="$repo" \
-  PLUGIN_REPO_SLUG="$repo" \
-  PLUGIN_REPO_PATH="$repo_path" \
-  PLUGIN_REPO_URL="$repo_url" \
-  PLUGIN_REPO_GIT_URL="$repo_git_url" \
-  PLUGIN_REPO_RAW_BASE_URL="$repo_raw_base_url" \
-  REPO="$repo" \
-  REPO_PATH="$repo_path" \
-  REPO_URL="$repo_url" \
-  bash "$plugin_dir/install.sh"
+  (
+    cd "$plugin_dir"
+    PLUGIN_REPO="$repo" \
+    PLUGIN_REPO_SLUG="$repo" \
+    PLUGIN_REPO_PATH="$repo_path" \
+    PLUGIN_REPO_URL="$repo_url" \
+    PLUGIN_REPO_GIT_URL="$repo_git_url" \
+    PLUGIN_REPO_RAW_BASE_URL="$repo_raw_base_url" \
+    REPO="$repo" \
+    REPO_PATH="$repo_path" \
+    REPO_URL="$repo_url" \
+    bash "./install.sh"
+  )
+}
+
+rerun_generated_plugin_setup() {
+  local plugin_dir="$1"
+  local repo="$2"
+  local setup_script
+
+  setup_script="$plugin_dir/setup-kiosk.sh"
+  [ -f "$setup_script" ] || return 0
+
+  sync_saved_env_to_plugin_dir "$repo" "$plugin_dir"
+  echo "🚀 Re-running generated setup script with saved config..."
+  bash "$setup_script"
 }
 
 configure_plugin() {
@@ -664,6 +680,7 @@ configure_plugin() {
   if [ "${PLUGIN_ENV_CHANGED:-0}" -eq 1 ]; then
     echo "🚀 Re-running install.sh for config changes..."
     run_plugin_installer "$tmp_dir" "$repo"
+    rerun_generated_plugin_setup "$tmp_dir" "$repo"
     show_detected_plugin_services "$tmp_dir"
     restart_plugin_services_if_running "$tmp_dir"
   fi
