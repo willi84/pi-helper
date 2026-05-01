@@ -25,7 +25,16 @@ target_dir="${@: -1}"
 mkdir -p "$target_dir"
 cat <<'EOS' > "$target_dir/install.sh"
 #!/bin/bash
-printf '%s\n' "${PLUGIN_REPO:-missing}" > "$HOME/install.log"
+cat <<EOT > "$HOME/install.log"
+PLUGIN_REPO=${PLUGIN_REPO:-missing}
+PLUGIN_REPO_PATH=${PLUGIN_REPO_PATH:-missing}
+PLUGIN_REPO_URL=${PLUGIN_REPO_URL:-missing}
+PLUGIN_REPO_GIT_URL=${PLUGIN_REPO_GIT_URL:-missing}
+PLUGIN_REPO_RAW_BASE_URL=${PLUGIN_REPO_RAW_BASE_URL:-missing}
+REPO=${REPO:-missing}
+REPO_PATH=${REPO_PATH:-missing}
+REPO_URL=${REPO_URL:-missing}
+EOT
 EOS
 chmod +x "$target_dir/install.sh"
 exit 0
@@ -50,7 +59,15 @@ teardown() {
   [ "$status" -eq 0 ]
   [ -f "$install_log" ]
   run cat "$install_log"
-  [ "$output" = "user/project" ]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PLUGIN_REPO=user/project"* ]]
+  [[ "$output" == *"PLUGIN_REPO_PATH=github.com/user/project"* ]]
+  [[ "$output" == *"PLUGIN_REPO_URL=https://github.com/user/project"* ]]
+  [[ "$output" == *"PLUGIN_REPO_GIT_URL=https://github.com/user/project.git"* ]]
+  [[ "$output" == *"PLUGIN_REPO_RAW_BASE_URL=https://raw.githubusercontent.com/user/project/main"* ]]
+  [[ "$output" == *"REPO=user/project"* ]]
+  [[ "$output" == *"REPO_PATH=github.com/user/project"* ]]
+  [[ "$output" == *"REPO_URL=https://github.com/user/project"* ]]
 }
 
 @test "🧪 plugin installs repo from template dialog" {
@@ -75,7 +92,9 @@ EOF
 
   [ "$status" -eq 0 ]
   run cat "$install_log"
-  [ "$output" = "willi84/test-pi" ]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PLUGIN_REPO=willi84/test-pi"* ]]
+  [[ "$output" == *"PLUGIN_REPO_PATH=github.com/willi84/test-pi"* ]]
 }
 
 @test "🧪 prompt_for_plugin_repo returns only repo value" {
@@ -120,5 +139,7 @@ EOF
 
   [ "$status" -eq 0 ]
   run cat "$install_log"
-  [ "$output" = "custom/pi-project" ]
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"PLUGIN_REPO=custom/pi-project"* ]]
+  [[ "$output" == *"PLUGIN_REPO_PATH=github.com/custom/pi-project"* ]]
 }
