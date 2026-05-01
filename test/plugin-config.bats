@@ -57,3 +57,35 @@ EOF
   [[ "$output" == *"APP_PORT=8080"* ]]
   [[ "$output" == *"APP_HOST=example.local"* ]]
 }
+
+@test "🧪 plugin-config shows saved env keys when install script has no defaults" {
+  cat <<'EOF' > "$plugin_config_dir/installed-plugins"
+willi84/test-pi
+EOF
+  cat <<'EOF' > "$plugin_state_dir/willi84_test-pi.env"
+APP_PORT=8080
+APP_HOST=old-host
+EOF
+  cat <<'EOF' > "$fake_bin_dir/git"
+#!/bin/bash
+target_dir="${@: -1}"
+mkdir -p "$target_dir"
+cat <<'EOS' > "$target_dir/install.sh"
+#!/bin/bash
+echo "${APP_PORT}"
+echo "${APP_HOST}"
+EOS
+chmod +x "$target_dir/install.sh"
+exit 0
+EOF
+  chmod +x "$fake_bin_dir/git"
+
+  run bash -c "printf '1\n9090\n\n' | env HOME='$home_dir' PATH='$fake_bin_dir:$PATH' bash '$src_bin_dir/plugin-config'"
+
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Plugin config saved: willi84/test-pi"* ]]
+  run cat "$plugin_state_dir/willi84_test-pi.env"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"APP_PORT=9090"* ]]
+  [[ "$output" == *"APP_HOST=old-host"* ]]
+}

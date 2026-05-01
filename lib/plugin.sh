@@ -157,7 +157,7 @@ import re
 import sys
 
 install_script = sys.argv[1]
-pattern = re.compile(r'\$\{([A-Z][A-Z0-9_]*)[:-]-(.*?)\}')
+pattern = re.compile(r'\$\{([A-Z][A-Z0-9_]*)(?:(?::-|:=|-|=)(.*?))?\}')
 seen = set()
 
 with open(install_script, "r", encoding="utf-8") as handle:
@@ -169,6 +169,53 @@ for key, default in pattern.findall(content):
     seen.add(key)
     normalized_default = default.replace("\n", "\\n")
     print(f"{key}|{normalized_default}")
+EOF
+}
+
+list_plugin_env_entries() {
+  local repo="$1"
+  local install_script="$2"
+  local env_file
+
+  env_file="$(get_plugin_env_file "$repo")"
+
+  python3 - "$install_script" "$env_file" <<'EOF'
+import re
+import sys
+
+install_script = sys.argv[1]
+env_file = sys.argv[2]
+pattern = re.compile(r'\$\{([A-Z][A-Z0-9_]*)(?:(?::-|:=|-|=)(.*?))?\}')
+entries = []
+seen = set()
+
+def emit(key: str, default: str) -> None:
+    key = key.strip()
+    if not key or key in seen:
+        return
+    seen.add(key)
+    entries.append((key, default.replace("\n", "\\n")))
+
+with open(install_script, "r", encoding="utf-8") as handle:
+    content = handle.read()
+
+for key, default in pattern.findall(content):
+    emit(key, default)
+
+try:
+    with open(env_file, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key = line.split("=", 1)[0].strip()
+            if re.fullmatch(r"[A-Z][A-Z0-9_]*", key):
+                emit(key, "")
+except FileNotFoundError:
+    pass
+
+for key, default in entries:
+    print(f"{key}|{default}")
 EOF
 }
 
@@ -201,7 +248,7 @@ prompt_plugin_env_updates() {
     fi
 
     save_plugin_env_value "$repo" "$key" "$next_value"
-  done < <(extract_plugin_env_spec "$install_script")
+  done < <(list_plugin_env_entries "$repo" "$install_script")
 
   exec 3<&-
 }
