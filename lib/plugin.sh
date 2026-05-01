@@ -133,6 +133,15 @@ save_plugin_env_value() {
   mv "$tmp_file" "$env_file"
 }
 
+load_all_plugin_env_values() {
+  local repo="$1"
+  local env_file
+
+  env_file="$(get_plugin_env_file "$repo")"
+  [ -f "$env_file" ] || return 0
+  cat "$env_file"
+}
+
 load_plugin_env_value() {
   local repo="$1"
   local key="$2"
@@ -255,6 +264,7 @@ prompt_plugin_env_updates() {
   local current_value
   local next_value
 
+  PLUGIN_ENV_CHANGED=0
   exec 3<&0
 
   while IFS= read -r line; do
@@ -274,10 +284,73 @@ prompt_plugin_env_updates() {
       next_value="$current_value"
     fi
 
+    if [ "$next_value" != "$current_value" ]; then
+      PLUGIN_ENV_CHANGED=1
+    fi
+
     save_plugin_env_value "$repo" "$key" "$next_value"
   done < <(list_plugin_env_entries "$repo" "$install_script")
 
   exec 3<&-
+}
+
+list_plugin_service_names() {
+  local plugin_dir="$1"
+
+  python3 - "$plugin_dir" <<'EOF'
+import re
+import sys
+from pathlib import Path
+
+plugin_dir = Path(sys.argv[1])
+seen = set()
+patterns = [
+    re.compile(r'/etc/systemd/system/([A-Za-z0-9_.@-]+\.service)'),
+    re.compile(r'systemctl\s+(?:enable|restart|start)\s+([A-Za-z0-9_.@-]+)')
+]
+
+for path in plugin_dir.rglob('*'):
+    if not path.is_file():
+        continue
+    try:
+        content = path.read_text(encoding='utf-8')
+    except Exception:
+        continue
+    for pattern in patterns:
+        for match in pattern.findall(content):
+            service = match if match.endswith('.service') else f'{match}.service'
+            if service in seen:
+                continue
+            seen.add(service)
+            print(service)
+EOF
+}
+
+restart_plugin_services_if_running() {
+  local plugin_dir="$1"
+  local service
+  local restarted=0
+
+  command -v systemctl >/dev/null 2>&1 || return 0
+
+  while IFS= read -r service; do
+    [ -n "$service" ] || continue
+
+    if sudo -n systemctl is-active --quiet "$service" 2>/dev/null; then
+      sudo -n systemctl restart "$service" >/dev/null 2>&1 || true
+      echo "🔄 Restarted service: $service"
+      restarted=1
+      continue
+    fi
+
+    if systemctl --user is-active --quiet "$service" 2>/dev/null; then
+      systemctl --user restart "$service" >/dev/null 2>&1 || true
+      echo "🔄 Restarted user service: $service"
+      restarted=1
+    fi
+  done < <(list_plugin_service_names "$plugin_dir")
+
+  [ "$restarted" -eq 1 ] || echo "ℹ️ No running plugin service found for restart"
 }
 
 apply_saved_plugin_env() {
@@ -434,6 +507,7 @@ configure_plugin() {
   local repo="$1"
   local tmp_dir
   local install_script
+  local env_file
 
   if [ -z "$repo" ]; then
     repo="$(prompt_for_installed_plugin_repo)"
@@ -459,10 +533,16 @@ configure_plugin() {
   prompt_plugin_env_updates "$repo" "$install_script"
   save_installed_plugin_repo "$repo"
   save_last_plugin_repo "$repo"
+  env_file="$(get_plugin_env_file "$repo")"
+
+  if [ "${PLUGIN_ENV_CHANGED:-0}" -eq 1 ]; then
+    restart_plugin_services_if_running "$tmp_dir"
+  fi
 
   trap - EXIT
   rm -rf "$tmp_dir"
   echo "✅ Plugin config saved: $repo"
+  echo "📄 Config path: $env_file"
 }
 
 update_plugin() {
