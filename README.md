@@ -10,14 +10,19 @@
 
 ## 🧪 Installation
 
+* install basic cli tool:
 ```bash
 curl -sL https://raw.githubusercontent.com/willi84/pi-helper/main/install.sh | bash
 ```
-
-Or with a different repository:
-
+### Plugins
+* install a plugin by its name
 ```bash
-REPO="youruser/yourrepo" bash <(curl -sL https://raw.githubusercontent.com/youruser/yourrepo/main/install.sh)
+pi plugin willi84/kiosk-pi
+```
+
+or select from the templates
+```bash
+pi plugin 
 ```
 
 ---
@@ -32,10 +37,10 @@ REPO="youruser/yourrepo" bash <(curl -sL https://raw.githubusercontent.com/youru
 
 sample usage:
 ```bash
-pi install flask picamera
 pi plugin willi84/kiosk-pi
 pi plugin
 pi update
+pi help
 ```
 
 ## 🔌 Plugins
